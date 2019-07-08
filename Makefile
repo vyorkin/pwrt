@@ -2,4 +2,7 @@ build:
 	cabal new-build
 	cabal new-test
 
-.PHONY: build
+repl:
+	cabal new-repl readme
+
+.PHONY: build repl
