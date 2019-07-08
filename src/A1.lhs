@@ -1,8 +1,16 @@
-Start.
+Refinement Types = `Types` + `Predicates`.
 
 > module A1
 >   ( minus
 >   ) where
+
+Base types, type variables:
+
+< b := Int | Bool | ... | a, b, c
+
+Refined base or refined function:
+
+< t := { x:b | p } | x:t -> t
 
 The very basic example:
 

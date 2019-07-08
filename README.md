@@ -35,12 +35,26 @@ package](https://github.com/spinda/liquidhaskell-cabal) for
 Cabal and Stack. See the
 [liquidhaskell-cabal-demo](https://github.com/spinda/liquidhaskell-cabal-demo)
 for an example project setup.
-Start.
+
+This project is another example of using `liquidhaskell-cabal`.
+Refinement Types = `Types` + `Predicates`.
 
 ``` {.haskell .literate}
 module A1
   ( minus
   ) where
+```
+
+Base types, type variables:
+
+``` {.haskell}
+b := Int | Bool | ... | a, b, c
+```
+
+Refined base or refined function:
+
+``` {.haskell}
+t := { x:b | p } | x:t -> t
 ```
 
 The very basic example:

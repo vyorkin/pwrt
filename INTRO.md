@@ -35,3 +35,5 @@ package](https://github.com/spinda/liquidhaskell-cabal) for
 Cabal and Stack. See the
 [liquidhaskell-cabal-demo](https://github.com/spinda/liquidhaskell-cabal-demo)
 for an example project setup.
+
+This project is another example of using `liquidhaskell-cabal`.

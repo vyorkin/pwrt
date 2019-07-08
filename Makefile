@@ -4,7 +4,7 @@ LHS := $(sort $(wildcard src/*.lhs))
 build:
 	cabal new-build
 
-readme:
+readme: build
 	mkdir -p dist
 	cat $(LHS) > dist/all.lhs
 	$(PANDOC) --from=markdown+lhs --to=markdown dist/all.lhs -o dist/all.md

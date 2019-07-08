@@ -32,5 +32,4 @@ library
                      -Wpartial-fields
   build-depends:     base ^>= 4.12.0.0
                    , liquidhaskell-cabal ^>= 0.2.1
-                   , pandoc ^>= 2.7.3
-  exposed-modules:   Intro1
+  exposed-modules:   A1
