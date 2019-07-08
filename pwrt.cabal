@@ -12,21 +12,25 @@ build-type:          Custom
 custom-setup
   setup-depends:     base
                    , Cabal
-                   , liquidhaskell-cabal >= 0.2.1
-
+                   , liquidhaskell-cabal ^>= 0.2.1
 
 flag liquidhaskell
-  description:         After building, verify with LiquidHaskell
-  default:             False
+  description:       After building, verify with LiquidHaskell
+  default:           False
 
-test-suite readme
-  build-depends:           base ^>= 4.12.0.0
-                         , liquidhaskell-cabal >= 0.2.1
-                         , markdown-unlit ^>= 0.5.0
-  build-tool-depends:      markdown-unlit:markdown-unlit
-  type:                    exitcode-stdio-1.0
-  main-is:                 README.lhs
-  default-language:        Haskell2010
-  default-extensions:      TupleSections
-  ghc-options:             -pgmL markdown-unlit
-  x-liquidhaskell-options: --diff --no-termination
+library
+  hs-source-dirs:    src
+  default-language:  Haskell2010
+  ghc-options:       -Wall
+                     -Wincomplete-uni-patterns
+                     -Wincomplete-record-updates
+                     -Wcompat
+                     -Widentities
+                     -Wredundant-constraints
+                     -fhide-source-paths
+                     -Wmissing-export-lists
+                     -Wpartial-fields
+  build-depends:     base ^>= 4.12.0.0
+                   , liquidhaskell-cabal ^>= 0.2.1
+                   , pandoc ^>= 2.7.3
+  exposed-modules:   Intro1
