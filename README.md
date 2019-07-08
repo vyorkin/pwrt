@@ -40,9 +40,7 @@ This project is another example of using `liquidhaskell-cabal`.
 Refinement Types = `Types` + `Predicates`.
 
 ``` {.haskell .literate}
-module A1
-  ( minus
-  ) where
+module A1 where
 ```
 
 Base types, type variables:
@@ -57,33 +55,91 @@ Refined base or refined function:
 t := { x:b | p } | x:t -> t
 ```
 
-The very basic example:
+Where `p` is a predicate in decidable logic:
 
-``` {.haskell .literate}
-{-@ minus :: x:Int -> y:Int -> {v:Int | v = x - y} @-}
-minus :: Int -> Int -> Int
-minus x y = x - y
+``` {.haskell}
+p := e          -- atom
+  | e1 == e2    -- equality
+  | e1 <  e2    -- ordering
+  | (p && p)    -- and
+  | (p || p)    -- or
+  | (not p)     -- negation
 ```
 
-Blah
+Where `e` is an expression:
 
-``` {.haskell .literate}
-{-@ plus :: x:Int -> y:Int -> {v:Int | v = x + y} @-}
-plus :: Int -> Int -> Int
-plus x y = x + y
+``` {.haskell}
+e := x, y, z,...    -- variable
+   | 0, 1, 2,...    -- constant
+   | (e + e)        -- addition
+   | (e - e)        -- subtraction
+   | (c * e)        -- linear multiplication
+   | (f e1 ... en)  -- uninterpreted function
 ```
 
-``` {.haskell .literate}
-test :: String -> (String, String)
-test x = ("test", x)
-```
+Ok, lets try something!
 
-Quux
+We use `{-@ ... @-}` to add refinement type annotations:
 
 ``` {.haskell .literate}
-{-@ quux :: x:Int -> y:Int -> z:Int -> {v:Int | v = x + y - z} @-}
-quux :: Int -> Int -> Int -> Int
-quux x y z = x `plus` y `minus` z
+{-@ type Zero = {v:Int | v = 0} @-}
+{-@ zero :: Zero @-}
+zero :: Int
+zero = 0
 ```
 
-Blah blah
+Natural numbers:
+
+``` {.haskell .literate}
+{-@ type Nat = {v:Int | 0 <= v} @-}
+{-@ nats :: [Nat] @-}
+nats :: [Int]
+nats = [0, 1, 2]
+```
+
+Positive integers:
+
+``` {.haskell .literate}
+{-@ type Pos = {v:Int | 1 <= v} @-}
+{-@ pos :: [Pos] @-}
+pos :: [Int]
+pos = [1, 2, 3]
+```
+
+Predicate Subtyping:
+
+``` {.haskell .literate}
+{-@ z :: Zero @-}
+z :: Int
+z = 0
+```
+
+Because `z :: Zero <: Nat`:
+
+``` {.haskell .literate}
+{-@ z' :: Nat @-}
+z' :: Int
+z' = z
+```
+
+Contracts (function types):
+
+If the program type checks it means that `impossible` is never called at
+runtime.
+
+``` {.haskell .literate}
+{-@ impossible :: {v:_ | false} -> a @-}
+impossible :: [Char] -> a
+impossible msg = error msg
+```
+
+Pre-conditions:
+
+The next example won't typecheck:
+
+``` {.haskell}
+{-@ safeDiv :: Int -> Int -> Int @-}
+safeDiv :: Int -> Int -> Int
+safeDiv _ 0 = impossible "divide-by-zero"
+safeDiv x n = x `div` n
+```
