@@ -22,8 +22,10 @@ https://github.com/vyorkin/emacs.d#liquid-types
 
 ## Links
 
+* https://www.youtube.com/watch?v=vQrutfPAERQ
 * https://github.com/ucsd-progsys/liquidhaskell/blob/develop/NIX.md
 * https://github.com/ucsd-progsys/liquid-types.el
+
 
 # Notes
 

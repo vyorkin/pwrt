@@ -22,8 +22,10 @@ https://github.com/vyorkin/emacs.d#liquid-types
 
 ## Links
 
+* https://www.youtube.com/watch?v=vQrutfPAERQ
 * https://github.com/ucsd-progsys/liquidhaskell/blob/develop/NIX.md
 * https://github.com/ucsd-progsys/liquid-types.el
+
 
 # Notes
 
@@ -205,4 +207,138 @@ We could specify **post-condition** as **output-type**:
 size :: [a] -> Int
 size []     = 1
 size (_:xs) = 1 + size xs
+module A2 where
+```
+
+``` {.haskell .literate}
+import A1
+import Prelude hiding (length, foldr1, foldr, map, init)
+```
+
+``` {.haskell .literate}
+data List a
+  = Emp
+  | a ::: List a
+```
+
+Measures:
+
+``` {.haskell .literate}
+{-@ measure length @-}
+length :: List a -> Int
+length Emp = 0
+length (_ ::: xs) = 1 + length xs
+```
+
+And now LH knows the following properties about our `List a`:
+
+``` {.haskell}
+data List a where
+  Emp   :: {v:List a | length v = 0}
+  (:::) :: x:a -> xs:List a
+        -> {v:List a | length v = 1 + length xs}
+```
+
+Lets make a type alias for a non-empty `List`:
+
+``` {.haskell .literate}
+{-@ type ListNE a = {v:List a | length v > 0} @-}
+```
+
+And now `head` and `tail` functions are not *partial* anymore:
+
+``` {.haskell .literate}
+{-@ head :: ListNE a -> a @-}
+head (x ::: _) = x
+```
+
+``` {.haskell .literate}
+{-@ tail :: ListNE a -> List a @-}
+tail (_ ::: xs) = xs
+```
+
+*Fold* `f` over list initially using *first* element:
+
+``` {.haskell .literate}
+{-@ foldr1 :: (a -> a -> a) -> ListNE a -> a @-}
+foldr1 :: (a -> a -> a) -> List a -> a
+foldr1 f (x ::: xs) = foldr f x xs
+foldr1 _ _          = impossible "foldr1"
+```
+
+``` {.haskell .literate}
+foldr :: (a -> b -> b) -> b -> List a -> b
+foldr _ acc Emp = acc
+foldr f acc (x ::: xs) = f x (foldr f acc xs)
+```
+
+Another average:
+
+``` {.haskell .literate}
+{-@ average' :: ListNE Int -> Int @-}
+average' :: List Int -> Int
+average' xs = total `div` n
+  where
+    total = foldr1 (+) xs
+    n = length xs
+```
+
+We can refine data types and make illegal states unrepresentable. For
+example, lets make sure that every year has exactly 12 months.
+
+``` {.haskell .literate}
+data Year a = Year (List a)
+```
+
+``` {.haskell .literate}
+{-@ data Year a = Year (ListN a 12) @-}
+```
+
+We need a type for lists of a given size.
+
+``` {.haskell .literate}
+{-@ type ListN a N = {v: List a | length v == N } @-}
+```
+
+Now, this won't typecheck:
+
+``` {.haskell}
+badYear :: Year Int
+badYear = Year (1 ::: Emp)
+```
+
+Mapping:
+
+``` {.haskell .literate}
+{-@ map :: (a -> b) -> xs:List a -> ys:ListN b {length xs} @-}
+map :: (a -> b) -> List a -> List b
+map _ Emp = Emp
+map f (x ::: xs) = f x ::: map f xs
+```
+
+Lets write a function to calculate an average temperature of the year:
+
+``` {.haskell .literate}
+data Weather = W { temp :: Int, rain :: Int }
+```
+
+``` {.haskell .literate}
+tempAverage :: Year Weather -> Int
+tempAverage (Year ms) = average' months
+  where
+    months = map temp ms
+```
+
+Another example:
+
+``` {.haskell .literate}
+{-@ init :: (Int -> a) -> n:Nat -> ListN a n @-}
+init :: (Int -> a) -> Int -> List a
+init _ 0 = Emp
+init f n = f n ::: init f (n - 1)
+```
+
+``` {.haskell .literate}
+sanDiegoTemp :: Year Int
+sanDiegoTemp = Year (init (const 72) 12)
 ```
