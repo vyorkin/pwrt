@@ -1,3 +1,4 @@
+
 Refinement Types = `Types` + `Predicates`.
 
 > module A1 where
@@ -47,6 +48,7 @@ Natural numbers:
 Positive integers:
 
 > {-@ type Pos = {v:Int | 1 <= v} @-}
+
 > {-@ pos :: [Pos] @-}
 > pos :: [Int]
 > pos = [1, 2, 3]
@@ -65,8 +67,8 @@ Because `z :: Zero <: Nat`:
 
 Contracts (function types):
 
-If the program type checks it means that `impossible` is never
- called at runtime.
+If the program type checks it means
+that `impossible` is never called at runtime.
 
 > {-@ impossible :: {v:_ | false} -> a @-}
 > impossible :: [Char] -> a
@@ -80,3 +82,51 @@ The next example won't typecheck:
 < safeDiv :: Int -> Int -> Int
 < safeDiv _ 0 = impossible "divide-by-zero"
 < safeDiv x n = x `div` n
+
+But this one will:
+
+> {-@ type NonZero = {v:Int | v /= 0} @-}
+> {-@ safeDiv :: n:Int -> d:NonZero -> Int @-}
+> safeDiv :: Int -> Int -> Int
+> safeDiv x n = x `div` n
+
+Verifying user input:
+
+> calc :: IO ()
+> calc = do
+>   putStrLn "Enter numerator"
+>   n <- readLn
+>   putStrLn "Enter denominator"
+>   d <- readLn
+>   if d == 0
+>     then putStrLn "Blya"
+>     else putStrLn ("Result = " ++ show (safeDiv n d))
+>   -- calc
+
+Another way could be:
+
+> {-@ foo :: Int -> Maybe {v:Int | v /= 0} @-}
+> foo :: Int -> Maybe Int
+> foo 0 = Nothing
+> foo n = Just n
+
+< ...
+< case foo d of
+< Nothing -> putStrLn "Blya"
+< Just n  -> ...
+< ...
+
+Won't typecheck (`n` could be `0`)
+
+> avg :: [Int] -> Int
+> avg xs = safeDiv total n
+>   where
+>     total = sum xs
+>     n = size xs
+
+We could specify **post-condition** as **output-type**:
+
+> {-@ size :: [a] -> Pos @-}
+> size :: [a] -> Int
+> size []     = 1
+> size (_:xs) = 1 + size xs

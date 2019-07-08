@@ -28,7 +28,6 @@ library
                      -Widentities
                      -Wredundant-constraints
                      -fhide-source-paths
-                     -Wmissing-export-lists
                      -Wpartial-fields
   build-depends:     base ^>= 4.12.0.0
                    , liquidhaskell-cabal ^>= 0.2.1

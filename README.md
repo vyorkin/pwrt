@@ -101,6 +101,9 @@ Positive integers:
 
 ``` {.haskell .literate}
 {-@ type Pos = {v:Int | 1 <= v} @-}
+```
+
+``` {.haskell .literate}
 {-@ pos :: [Pos] @-}
 pos :: [Int]
 pos = [1, 2, 3]
@@ -142,4 +145,64 @@ The next example won't typecheck:
 safeDiv :: Int -> Int -> Int
 safeDiv _ 0 = impossible "divide-by-zero"
 safeDiv x n = x `div` n
+```
+
+But this one will:
+
+``` {.haskell .literate}
+{-@ type NonZero = {v:Int | v /= 0} @-}
+{-@ safeDiv :: n:Int -> d:NonZero -> Int @-}
+safeDiv :: Int -> Int -> Int
+safeDiv x n = x `div` n
+```
+
+Verifying user input:
+
+``` {.haskell .literate}
+calc :: IO ()
+calc = do
+  putStrLn "Enter numerator"
+  n <- readLn
+  putStrLn "Enter denominator"
+  d <- readLn
+  if d == 0
+    then putStrLn "Blya"
+    else putStrLn ("Result = " ++ show (safeDiv n d))
+  -- calc
+```
+
+Another way could be:
+
+``` {.haskell .literate}
+{-@ foo :: Int -> Maybe {v:Int | v /= 0} @-}
+foo :: Int -> Maybe Int
+foo 0 = Nothing
+foo n = Just n
+```
+
+``` {.haskell}
+...
+case foo d of
+Nothing -> putStrLn "Blya"
+Just n  -> ...
+...
+```
+
+Won't typecheck (`n` could be `0`)
+
+``` {.haskell .literate}
+avg :: [Int] -> Int
+avg xs = safeDiv total n
+  where
+    total = sum xs
+    n = size xs
+```
+
+We could specify **post-condition** as **output-type**:
+
+``` {.haskell .literate}
+{-@ size :: [a] -> Pos @-}
+size :: [a] -> Int
+size []     = 1
+size (_:xs) = 1 + size xs
 ```
