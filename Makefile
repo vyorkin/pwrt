@@ -1,6 +1,6 @@
 build:
-	cabal new-build
-	cabal new-test
+	cabal new-build readme
+	cabal new-test readme
 
 repl:
 	cabal new-repl readme

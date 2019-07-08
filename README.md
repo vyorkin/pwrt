@@ -36,11 +36,11 @@ Cabal and Stack. See the
 [liquidhaskell-cabal-demo](https://github.com/spinda/liquidhaskell-cabal-demo)
 for an example project setup.
 
-Привет! Попробуем заставить это работать.
-
 ```haskell
-main :: IO ()
-main = putStrLn "That was easy!"
-```
+{-@ minus :: x:Int -> y:Int -> {v:Int | v = x + y} @-}
+minus :: Int -> Int -> Int
+minus x y = x - y
 
-Пока!
+main :: IO ()
+main = return ()
+```
