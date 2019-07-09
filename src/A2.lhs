@@ -1,3 +1,8 @@
+
+The next section is about data types.
+
+> {-# LANGUAGE ScopedTypeVariables #-}
+
 > module A2 where
 
 > import A1
@@ -94,3 +99,19 @@ Another example:
 
 > sanDiegoTemp :: Year Int
 > sanDiegoTemp = Year (init (const 72) 12)
+
+It seems that the problem is in the following condition `VV < i` ,
+but I don't understand where this condition comes from.
+Asked in slack, waiting for reply.
+
+< {-@ init' :: (Int -> a) -> n:Nat -> ListN a n @-}
+< init' :: forall a. (Int -> a) -> Int -> List a
+< init' f n = go 0
+<   where
+<     {-@ go :: i:_ -> ListN a {n - i} @-}
+<     go :: Int -> List a
+<     go i | i < n     = f i ::: go (i + 1)
+<          | otherwise = Emp
+
+< sanDiegoTemp' :: Year Int
+< sanDiegoTemp' = Year (init' (const 72) 12)

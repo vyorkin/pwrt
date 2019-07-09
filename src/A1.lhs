@@ -33,10 +33,10 @@ Ok, lets try something!
 
 We use `{-@ ... @-}` to add refinement type annotations:
 
-> {-@ type Zero = {v:Int | v = 0} @-}
-> {-@ zero :: Zero @-}
-> zero :: Int
-> zero = 0
+< {-@ type Zero = {v:Int | v = 0} @-}
+< {-@ zero :: Zero @-}
+< zero :: Int
+< zero = 0
 
 Natural numbers:
 
@@ -55,15 +55,15 @@ Positive integers:
 
 Predicate Subtyping:
 
-> {-@ z :: Zero @-}
-> z :: Int
-> z = 0
+< {-@ z :: Zero @-}
+< z :: Int
+< z = 0
 
 Because `z :: Zero <: Nat`:
 
-> {-@ z' :: Nat @-}
-> z' :: Int
-> z' = z
+< {-@ z' :: Nat @-}
+< z' :: Int
+< z' = z
 
 Contracts (function types):
 

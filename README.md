@@ -83,7 +83,7 @@ Ok, lets try something!
 
 We use `{-@ ... @-}` to add refinement type annotations:
 
-``` {.haskell .literate}
+``` {.haskell}
 {-@ type Zero = {v:Int | v = 0} @-}
 {-@ zero :: Zero @-}
 zero :: Int
@@ -113,7 +113,7 @@ pos = [1, 2, 3]
 
 Predicate Subtyping:
 
-``` {.haskell .literate}
+``` {.haskell}
 {-@ z :: Zero @-}
 z :: Int
 z = 0
@@ -121,7 +121,7 @@ z = 0
 
 Because `z :: Zero <: Nat`:
 
-``` {.haskell .literate}
+``` {.haskell}
 {-@ z' :: Nat @-}
 z' :: Int
 z' = z
@@ -207,6 +207,15 @@ We could specify **post-condition** as **output-type**:
 size :: [a] -> Int
 size []     = 1
 size (_:xs) = 1 + size xs
+```
+
+The next section is about data types.
+
+``` {.haskell .literate}
+{-# LANGUAGE ScopedTypeVariables #-}
+```
+
+``` {.haskell .literate}
 module A2 where
 ```
 
@@ -342,3 +351,87 @@ init f n = f n ::: init f (n - 1)
 sanDiegoTemp :: Year Int
 sanDiegoTemp = Year (init (const 72) 12)
 ```
+
+It seems that the problem is in the following condition `VV < i` , but I
+don't understand where this condition comes from. Asked in slack,
+waiting for reply.
+
+``` {.haskell}
+{-@ init' :: (Int -> a) -> n:Nat -> ListN a n @-}
+init' :: forall a. (Int -> a) -> Int -> List a
+init' f n = go 0
+  where
+    {-@ go :: i:_ -> ListN a {n - i} @-}
+    go :: Int -> List a
+    go i | i < n     = f i ::: go (i + 1)
+         | otherwise = Emp
+```
+
+``` {.haskell}
+sanDiegoTemp' :: Year Int
+sanDiegoTemp' = Year (init' (const 72) 12)
+```
+
+Case study: **Insertion Sort**.
+
+``` {.haskell .literate}
+{-# LANGUAGE ScopedTypeVariables #-}
+```
+
+``` {.haskell .literate}
+module A3 where
+```
+
+``` {.haskell .literate}
+import A2
+import Data.Set (Set)
+import qualified Data.Set as Set
+```
+
+``` {.haskell .literate}
+import Prelude hiding (length, foldr1, foldr, map, init)
+```
+
+We need to check 3 things:
+
+-   Lists have same size
+-   Lists have same elements
+-   Elements in the right order
+
+Lets start with the *same size* constraint:
+
+``` {.haskell .literate}
+{-@ sort :: Ord a => xs:List a -> ListN a {length xs} @-}
+sort Emp = Emp
+sort (x ::: xs) = insert x (sort xs)
+```
+
+``` {.haskell .literate}
+{-@ insert :: Ord a => a -> xs:List a -> ListN a {length xs + 1} @-}
+insert :: Ord a => a -> List a -> List a
+insert x Emp        = x ::: Emp
+insert x (y ::: ys)
+  | x <= y          = x ::: (y ::: ys)
+  | otherwise       = y ::: insert x ys
+```
+
+Now, lets ensure that a sorted list have the same elements. SMT solvers
+reason about sets. Hence, we can write set-valued measures.
+
+Fails with `Termination Error`, `no decreasing parameter`. Asked in
+Slack, will come back to this later.
+
+``` {.haskell}
+{-@ measure elems @-}
+elems :: Ord a => List a -> Set a
+elems Emp = Set.empty
+elems (x ::: xs) = addElem x xs
+```
+
+``` {.haskell}
+{-@ inline addElem @-}
+addElem :: Ord a => a -> List a -> Set a
+addElem x xs = Set.union (Set.singleton x) (elems xs)
+```
+
+`inline` lets us reuse Haskell terms in refinements.
