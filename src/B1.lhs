@@ -194,6 +194,8 @@ Lets define an uninterpreted function from `Int` to `Int`:
 
 > {-@ measure f :: Int -> Int @-}
 
-> {-@ congruence :: (Int -> Int) -> Int -> Int -> TRUE @-}
-> congruence :: (Int -> Int) -> Int -> Int -> Bool
-> congruence f x y = (x == y) ==> (f x == f y)
+We test the axiom by checking the following predicate:
+
+< {-@ congruence :: (Int -> Int) -> Int -> Int -> TRUE @-}
+< congruence :: (Int -> Int) -> Int -> Int -> Bool
+< congruence f x y = (x == y) ==> (f x == f y)
