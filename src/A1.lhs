@@ -1,7 +1,10 @@
 
+
 Refinement Types = `Types` + `Predicates`.
 
 > module A1 where
+
+> {-@ LIQUID "--no-termination" @-}
 
 Base types, type variables:
 
@@ -101,7 +104,7 @@ Verifying user input:
 >   if d == 0
 >     then putStrLn "Blya"
 >     else putStrLn ("Result = " ++ show (safeDiv n d))
->   -- calc
+>   calc
 
 Another way could be:
 

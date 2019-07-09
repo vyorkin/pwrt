@@ -36,9 +36,8 @@ There is a Liquid Haskell [integration
 package](https://github.com/spinda/liquidhaskell-cabal) for
 Cabal and Stack. See the
 [liquidhaskell-cabal-demo](https://github.com/spinda/liquidhaskell-cabal-demo)
-for an example project setup.
-
-This project is another example of using `liquidhaskell-cabal`.
+for an example project setup. This project is another example of
+using `liquidhaskell-cabal`.
 Refinement Types = `Types` + `Predicates`.
 
 ``` haskell literate
@@ -435,3 +434,80 @@ addElem x xs = Set.union (Set.singleton x) (elems xs)
 ```
 
 `inline` lets us reuse Haskell terms in refinements.
+
+**Implication** and **if-and-only-if** operators.
+
+``` haskell literate
+module B1 where
+```
+
+`==>` and `<=>` are special operators.
+
+`==>` is the **implication** operator, think of it as the following
+Haskell function:
+
+``` haskell
+{-@ (==>) :: p:Bool -> q:Bool -> {v:Bool | v <=> (p ==> q)} @-}
+(==>) :: Bool -> Bool -> Bool
+False ==> False = True
+False ==> True  = True
+True  ==> True  = True
+True  ==> True  = False
+```
+
+`<=>` is the **if-and-only-if** operator, which is equivalent to the
+Haskell function:
+
+``` haskell literate
+{-@ (<=>) :: p:Bool -> q:Bool -> {v:Bool | v <=> (p <=> q)} @-}
+(<=>) :: Bool -> Bool -> Bool
+False <=> False = True
+False <=> True  = False
+True  <=> True  = True
+True  <=> False = False
+```
+
+An **environment** is a mapping from variables to their Haskell types.
+For example, let `G` be an environment:
+
+``` haskell
+x :: Int
+y :: Int
+z :: Int
+```
+
+Satisfaction:
+
+A **predicate** is SATISFIABLE in a env `G` if *there exists* an
+**assignment** in `G` that makes the **predicate** evaluate to `True`.
+
+``` haskell
+x + y == z
+```
+
+Validity:
+
+A **predicate** is VALID in an env `G` if *every* **assignment** make a
+**predicate** evalue to `True`.
+
+``` haskell
+x < 10 || x == 10 || x > 10
+```
+
+Verification conditions:
+
+LH checks the program in roughly 2 steps:
+
+1.  Combines code and types down to a set of *Verification Conditions
+    (VC)* which are **predicates** that are valid *only if* the program
+    satisfies a given property which are **predicates** that are valid
+    *only if* the program satisfies a given property.
+
+2.  Quries the **SMT solver** (e.g. `Z3`) to determine whether these
+    **VC**s are valid.
+
+Whatever.
+
+``` haskell literate
+module B2 where
+```
