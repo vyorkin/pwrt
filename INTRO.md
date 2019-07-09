@@ -22,9 +22,10 @@ https://github.com/vyorkin/emacs.d#liquid-types
 
 ## Links
 
-* https://www.youtube.com/watch?v=vQrutfPAERQ
-* https://github.com/ucsd-progsys/liquidhaskell/blob/develop/NIX.md
-* https://github.com/ucsd-progsys/liquid-types.el
+* [the book](https://github.com/ucsd-progsys/liquidhaskell-tutorial/blob/master/pdf/programming-with-refinement-types.pdf)
+* [the talk](https://www.youtube.com/watch?v=vQrutfPAERQ)
+* [with Nix](https://github.com/ucsd-progsys/liquidhaskell/blob/develop/NIX.md)
+* [with Emacs](https://github.com/ucsd-progsys/liquid-types.el)
 
 
 # Notes
