@@ -41,25 +41,25 @@ for an example project setup.
 This project is another example of using `liquidhaskell-cabal`.
 Refinement Types = `Types` + `Predicates`.
 
-``` {.haskell .literate}
+``` haskell literate
 module A1 where
 ```
 
 Base types, type variables:
 
-``` {.haskell}
+``` haskell
 b := Int | Bool | ... | a, b, c
 ```
 
 Refined base or refined function:
 
-``` {.haskell}
+``` haskell
 t := { x:b | p } | x:t -> t
 ```
 
 Where `p` is a predicate in decidable logic:
 
-``` {.haskell}
+``` haskell
 p := e          -- atom
   | e1 == e2    -- equality
   | e1 <  e2    -- ordering
@@ -70,7 +70,7 @@ p := e          -- atom
 
 Where `e` is an expression:
 
-``` {.haskell}
+``` haskell
 e := x, y, z,...    -- variable
    | 0, 1, 2,...    -- constant
    | (e + e)        -- addition
@@ -79,11 +79,11 @@ e := x, y, z,...    -- variable
    | (f e1 ... en)  -- uninterpreted function
 ```
 
-Ok, lets try something!
+Ok, lets try something\!
 
 We use `{-@ ... @-}` to add refinement type annotations:
 
-``` {.haskell}
+``` haskell
 {-@ type Zero = {v:Int | v = 0} @-}
 {-@ zero :: Zero @-}
 zero :: Int
@@ -92,7 +92,7 @@ zero = 0
 
 Natural numbers:
 
-``` {.haskell .literate}
+``` haskell literate
 {-@ type Nat = {v:Int | 0 <= v} @-}
 {-@ nats :: [Nat] @-}
 nats :: [Int]
@@ -101,11 +101,11 @@ nats = [0, 1, 2]
 
 Positive integers:
 
-``` {.haskell .literate}
+``` haskell literate
 {-@ type Pos = {v:Int | 1 <= v} @-}
 ```
 
-``` {.haskell .literate}
+``` haskell literate
 {-@ pos :: [Pos] @-}
 pos :: [Int]
 pos = [1, 2, 3]
@@ -113,7 +113,7 @@ pos = [1, 2, 3]
 
 Predicate Subtyping:
 
-``` {.haskell}
+``` haskell
 {-@ z :: Zero @-}
 z :: Int
 z = 0
@@ -121,7 +121,7 @@ z = 0
 
 Because `z :: Zero <: Nat`:
 
-``` {.haskell}
+``` haskell
 {-@ z' :: Nat @-}
 z' :: Int
 z' = z
@@ -132,7 +132,7 @@ Contracts (function types):
 If the program type checks it means that `impossible` is never called at
 runtime.
 
-``` {.haskell .literate}
+``` haskell literate
 {-@ impossible :: {v:_ | false} -> a @-}
 impossible :: [Char] -> a
 impossible msg = error msg
@@ -140,9 +140,9 @@ impossible msg = error msg
 
 Pre-conditions:
 
-The next example won't typecheck:
+The next example won’t typecheck:
 
-``` {.haskell}
+``` haskell
 {-@ safeDiv :: Int -> Int -> Int @-}
 safeDiv :: Int -> Int -> Int
 safeDiv _ 0 = impossible "divide-by-zero"
@@ -151,7 +151,7 @@ safeDiv x n = x `div` n
 
 But this one will:
 
-``` {.haskell .literate}
+``` haskell literate
 {-@ type NonZero = {v:Int | v /= 0} @-}
 {-@ safeDiv :: n:Int -> d:NonZero -> Int @-}
 safeDiv :: Int -> Int -> Int
@@ -160,7 +160,7 @@ safeDiv x n = x `div` n
 
 Verifying user input:
 
-``` {.haskell .literate}
+``` haskell literate
 calc :: IO ()
 calc = do
   putStrLn "Enter numerator"
@@ -175,14 +175,14 @@ calc = do
 
 Another way could be:
 
-``` {.haskell .literate}
+``` haskell literate
 {-@ foo :: Int -> Maybe {v:Int | v /= 0} @-}
 foo :: Int -> Maybe Int
 foo 0 = Nothing
 foo n = Just n
 ```
 
-``` {.haskell}
+``` haskell
 ...
 case foo d of
 Nothing -> putStrLn "Blya"
@@ -190,9 +190,9 @@ Just n  -> ...
 ...
 ```
 
-Won't typecheck (`n` could be `0`)
+Won’t typecheck (`n` could be `0`)
 
-``` {.haskell .literate}
+``` haskell literate
 avg :: [Int] -> Int
 avg xs = safeDiv total n
   where
@@ -202,7 +202,7 @@ avg xs = safeDiv total n
 
 We could specify **post-condition** as **output-type**:
 
-``` {.haskell .literate}
+``` haskell literate
 {-@ size :: [a] -> Pos @-}
 size :: [a] -> Int
 size []     = 1
@@ -211,20 +211,20 @@ size (_:xs) = 1 + size xs
 
 The next section is about data types.
 
-``` {.haskell .literate}
+``` haskell literate
 {-# LANGUAGE ScopedTypeVariables #-}
 ```
 
-``` {.haskell .literate}
+``` haskell literate
 module A2 where
 ```
 
-``` {.haskell .literate}
+``` haskell literate
 import A1
 import Prelude hiding (length, foldr1, foldr, map, init)
 ```
 
-``` {.haskell .literate}
+``` haskell literate
 data List a
   = Emp
   | a ::: List a
@@ -232,7 +232,7 @@ data List a
 
 Measures:
 
-``` {.haskell .literate}
+``` haskell literate
 {-@ measure length @-}
 length :: List a -> Int
 length Emp = 0
@@ -241,7 +241,7 @@ length (_ ::: xs) = 1 + length xs
 
 And now LH knows the following properties about our `List a`:
 
-``` {.haskell}
+``` haskell
 data List a where
   Emp   :: {v:List a | length v = 0}
   (:::) :: x:a -> xs:List a
@@ -250,32 +250,32 @@ data List a where
 
 Lets make a type alias for a non-empty `List`:
 
-``` {.haskell .literate}
+``` haskell literate
 {-@ type ListNE a = {v:List a | length v > 0} @-}
 ```
 
 And now `head` and `tail` functions are not *partial* anymore:
 
-``` {.haskell .literate}
+``` haskell literate
 {-@ head :: ListNE a -> a @-}
 head (x ::: _) = x
 ```
 
-``` {.haskell .literate}
+``` haskell literate
 {-@ tail :: ListNE a -> List a @-}
 tail (_ ::: xs) = xs
 ```
 
 *Fold* `f` over list initially using *first* element:
 
-``` {.haskell .literate}
+``` haskell literate
 {-@ foldr1 :: (a -> a -> a) -> ListNE a -> a @-}
 foldr1 :: (a -> a -> a) -> List a -> a
 foldr1 f (x ::: xs) = foldr f x xs
 foldr1 _ _          = impossible "foldr1"
 ```
 
-``` {.haskell .literate}
+``` haskell literate
 foldr :: (a -> b -> b) -> b -> List a -> b
 foldr _ acc Emp = acc
 foldr f acc (x ::: xs) = f x (foldr f acc xs)
@@ -283,7 +283,7 @@ foldr f acc (x ::: xs) = f x (foldr f acc xs)
 
 Another average:
 
-``` {.haskell .literate}
+``` haskell literate
 {-@ average' :: ListNE Int -> Int @-}
 average' :: List Int -> Int
 average' xs = total `div` n
@@ -295,30 +295,30 @@ average' xs = total `div` n
 We can refine data types and make illegal states unrepresentable. For
 example, lets make sure that every year has exactly 12 months.
 
-``` {.haskell .literate}
+``` haskell literate
 data Year a = Year (List a)
 ```
 
-``` {.haskell .literate}
+``` haskell literate
 {-@ data Year a = Year (ListN a 12) @-}
 ```
 
 We need a type for lists of a given size.
 
-``` {.haskell .literate}
+``` haskell literate
 {-@ type ListN a N = {v: List a | length v == N } @-}
 ```
 
-Now, this won't typecheck:
+Now, this won’t typecheck:
 
-``` {.haskell}
+``` haskell
 badYear :: Year Int
 badYear = Year (1 ::: Emp)
 ```
 
 Mapping:
 
-``` {.haskell .literate}
+``` haskell literate
 {-@ map :: (a -> b) -> xs:List a -> ys:ListN b {length xs} @-}
 map :: (a -> b) -> List a -> List b
 map _ Emp = Emp
@@ -327,11 +327,11 @@ map f (x ::: xs) = f x ::: map f xs
 
 Lets write a function to calculate an average temperature of the year:
 
-``` {.haskell .literate}
+``` haskell literate
 data Weather = W { temp :: Int, rain :: Int }
 ```
 
-``` {.haskell .literate}
+``` haskell literate
 tempAverage :: Year Weather -> Int
 tempAverage (Year ms) = average' months
   where
@@ -340,23 +340,23 @@ tempAverage (Year ms) = average' months
 
 Another example:
 
-``` {.haskell .literate}
+``` haskell literate
 {-@ init :: (Int -> a) -> n:Nat -> ListN a n @-}
 init :: (Int -> a) -> Int -> List a
 init _ 0 = Emp
 init f n = f n ::: init f (n - 1)
 ```
 
-``` {.haskell .literate}
+``` haskell literate
 sanDiegoTemp :: Year Int
 sanDiegoTemp = Year (init (const 72) 12)
 ```
 
 It seems that the problem is in the following condition `VV < i` , but I
-don't understand where this condition comes from. Asked in slack,
+don’t understand where this condition comes from. Asked in slack,
 waiting for reply.
 
-``` {.haskell}
+``` haskell
 {-@ init' :: (Int -> a) -> n:Nat -> ListN a n @-}
 init' :: forall a. (Int -> a) -> Int -> List a
 init' f n = go 0
@@ -367,46 +367,46 @@ init' f n = go 0
          | otherwise = Emp
 ```
 
-``` {.haskell}
+``` haskell
 sanDiegoTemp' :: Year Int
 sanDiegoTemp' = Year (init' (const 72) 12)
 ```
 
 Case study: **Insertion Sort**.
 
-``` {.haskell .literate}
+``` haskell literate
 {-# LANGUAGE ScopedTypeVariables #-}
 ```
 
-``` {.haskell .literate}
+``` haskell literate
 module A3 where
 ```
 
-``` {.haskell .literate}
+``` haskell literate
 import A2
 import Data.Set (Set)
 import qualified Data.Set as Set
 ```
 
-``` {.haskell .literate}
+``` haskell literate
 import Prelude hiding (length, foldr1, foldr, map, init)
 ```
 
 We need to check 3 things:
 
--   Lists have same size
--   Lists have same elements
--   Elements in the right order
+  - Lists have same size
+  - Lists have same elements
+  - Elements in the right order
 
 Lets start with the *same size* constraint:
 
-``` {.haskell .literate}
+``` haskell literate
 {-@ sort :: Ord a => xs:List a -> ListN a {length xs} @-}
 sort Emp = Emp
 sort (x ::: xs) = insert x (sort xs)
 ```
 
-``` {.haskell .literate}
+``` haskell literate
 {-@ insert :: Ord a => a -> xs:List a -> ListN a {length xs + 1} @-}
 insert :: Ord a => a -> List a -> List a
 insert x Emp        = x ::: Emp
@@ -421,14 +421,14 @@ reason about sets. Hence, we can write set-valued measures.
 Fails with `Termination Error`, `no decreasing parameter`. Asked in
 Slack, will come back to this later.
 
-``` {.haskell}
+``` haskell
 {-@ measure elems @-}
 elems :: Ord a => List a -> Set a
 elems Emp = Set.empty
 elems (x ::: xs) = addElem x xs
 ```
 
-``` {.haskell}
+``` haskell
 {-@ inline addElem @-}
 addElem :: Ord a => a -> List a -> Set a
 addElem x xs = Set.union (Set.singleton x) (elems xs)
