@@ -443,6 +443,11 @@ addElem x xs = Set.union (Set.singleton x) (elems xs)
 **Implication** and **if-and-only-if** operators.
 
 ``` haskell literate
+{-@ LIQUID "--short-names" @-}
+{-@ LIQUID "--higherorder" @-}
+```
+
+``` haskell literate
 module B1 where
 ```
 
@@ -691,10 +696,58 @@ Lets define an uninterpreted function from `Int` to `Int`:
 
 We test the axiom by checking the following predicate:
 
-``` haskell
+``` haskell literate
 {-@ congruence :: (Int -> Int) -> Int -> Int -> TRUE @-}
 congruence :: (Int -> Int) -> Int -> Int -> Bool
 congruence f x y = (x == y) ==> (f x == f y)
+```
+
+I’m too stupid to figure out why this predicate is invalid.
+
+``` haskell literate
+{-@ fx1 :: (Int -> Int) -> Int -> TRUE @-}
+fx1 :: (Int -> Int) -> Int -> Bool
+fx1 f x =  (x == f (f (f x)))
+       ==> (x == f (f (f (f x))))
+       ==> (x == f x)
+```
+
+To get a taste:
+
+``` haskell literate
+{-@ measure size @-}
+size :: [a] -> Int
+size [] = 0
+size (_:xs) = 1 + size xs
+```
+
+Now we can verify the following predicate. The SMT doesn’t need to
+evaluate the `size` function to proove it.
+
+``` haskell literate
+{-@ fx0 :: [a] -> [a] -> TRUE @-}
+fx0 :: Eq a => [a] -> [a] -> Bool
+fx0 xs ys = (xs == ys) ==> (size xs == size ys)
+```
+
+But
+
+``` haskell
+{-@ fx2 :: a -> [a] -> TRUE @-}
+fx2 :: Eq a => a -> [a] -> Bool
+fx2 x xs = 0 < size ys
+  where
+    ys = x : xs
+```
+
+But
+
+``` haskell literate
+{-@ fx2VC :: [a] -> [b] -> TRUE @-}
+fx2VC :: [a] -> [b] -> Bool
+fx2VC xs ys =   (0 <= size xs)
+            ==> (size ys == 1 + size xs)
+            ==> (0 < size ys)
 ```
 
 Whatever.
