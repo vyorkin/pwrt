@@ -41,6 +41,9 @@ for an example project setup. This project is another example of
 using `liquidhaskell-cabal`.
 Refinement Types = `Types` + `Predicates`.
 
+**Refinement types** allows us to decorate types with *logical
+predicates*, that contrain the set of values described by the type.
+
 ``` haskell literate
 module A1 where
 ```
@@ -87,17 +90,24 @@ Ok, lets try something\!
 
 We use `{-@ ... @-}` to add refinement type annotations:
 
-``` haskell
+``` haskell literate
 {-@ type Zero = {v:Int | v = 0} @-}
 {-@ zero :: Zero @-}
 zero :: Int
 zero = 0
 ```
 
+Predicate Subtyping:
+
+``` haskell literate
+{-@ type Nat   = {v:Int | 0 <= v}        @-}
+{-@ type Even  = {v:Int | v mod 2 == 0 } @-}
+{-@ type Lt100 = {v:Int | v < 100}       @-}
+```
+
 Natural numbers:
 
 ``` haskell literate
-{-@ type Nat = {v:Int | 0 <= v} @-}
 {-@ nats :: [Nat] @-}
 nats :: [Int]
 nats = [0, 1, 2]
@@ -115,9 +125,9 @@ pos :: [Int]
 pos = [1, 2, 3]
 ```
 
-Predicate Subtyping:
+Zero:
 
-``` haskell
+``` haskell literate
 {-@ z :: Zero @-}
 z :: Int
 z = 0
@@ -125,11 +135,33 @@ z = 0
 
 Because `z :: Zero <: Nat`:
 
-``` haskell
+``` haskell literate
 {-@ z' :: Nat @-}
 z' :: Int
 z' = z
 ```
+
+Also:
+
+``` haskell literate
+{-@ z'' :: Even @-}
+z'' :: Int
+z'' = z
+```
+
+And this one as well:
+
+``` haskell literate
+{-@ z''' :: Lt100 @-}
+z''' :: Int
+z''' = z
+```
+
+When we *erase* the *refinement* we get the standart Haskell types. For
+example, the `Int` is equivalent to `{v:Int | true}` because any
+standart Haskell type has the trivial refinement `true`.
+
+Writing specifications and *typing dead code*.
 
 Contracts (function types):
 
@@ -137,9 +169,35 @@ If the program type checks it means that `impossible` is never called at
 runtime.
 
 ``` haskell literate
-{-@ impossible :: {v:_ | false} -> a @-}
-impossible :: [Char] -> a
+{-@ impossible :: {v:String | false} -> a @-}
+impossible :: String -> a
 impossible msg = error msg
+```
+
+``` haskell literate
+{-@ die :: {v:String | false} -> a @-}
+die :: String -> a
+die msg = impossible msg
+```
+
+For example, LH will *accept*:
+
+``` haskell literate
+cannonDie :: ()
+cannonDie =
+  if 1 + 1 == 3
+  then die "horrible death"
+  else ()
+```
+
+But will *reject*:
+
+``` haskell
+canDie :: ()
+canDie =
+  if 1 + 1 == 2
+  then die "horrible death"
+  else ()
 ```
 
 Pre-conditions:
@@ -177,24 +235,24 @@ calc = do
   calc
 ```
 
-Another way could be:
+Post-conditons.
+
+We can specify a *post-condition* as *output-type*.
+
+For example, lets refine the output type of the `abs` function to say
+that it returns only non-negative values:
 
 ``` haskell literate
-{-@ foo :: Int -> Maybe {v:Int | v /= 0} @-}
-foo :: Int -> Maybe Int
-foo 0 = Nothing
-foo n = Just n
+{-@ abs :: Int -> Nat @-}
+abs :: Int -> Int
+abs n
+  | 0 < n = n
+  | otherwise = -n
 ```
 
-``` haskell
-...
-case foo d of
-Nothing -> putStrLn "Blya"
-Just n  -> ...
-...
-```
+Because SMT solver has built-in decision procedures for arithmetic.
 
-Won’t typecheck (`n` could be `0`)
+Ex 3.1:
 
 ``` haskell literate
 avg :: [Int] -> Int
@@ -204,13 +262,73 @@ avg xs = safeDiv total n
     n = size xs
 ```
 
-We could specify **post-condition** as **output-type**:
-
 ``` haskell literate
 {-@ size :: [a] -> Pos @-}
 size :: [a] -> Int
 size []     = 1
 size (_:xs) = 1 + size xs
+```
+
+Another way to solve the `calc` exercise is to define a function like:
+
+``` haskell literate
+{-@ nonZero :: Int -> Maybe {v:Int | v /= 0} @-}
+nonZero :: Int -> Maybe Int
+nonZero 0 = Nothing
+nonZero n = Just n
+```
+
+``` haskell
+...
+case nonZero d of
+  Nothing -> putStrLn "Blya"
+  Just n  -> ...
+...
+```
+
+Or
+
+``` haskell literate
+result :: Int -> Int -> String
+result n d
+  | isPositive d = "result = " ++ show (n `safeDiv` d)
+  | otherwise    = "blya"
+```
+
+Ex 3.2:
+
+``` haskell literate
+{-@ isPositive :: x:_ -> {v:Bool | v <=> x > 0} @-}
+isPositive :: (Ord a, Num a) => a -> Bool
+isPositive = (> 0)
+```
+
+``` haskell literate
+calc' :: IO ()
+calc' = do
+  putStrLn "n: "
+  n <- readLn
+  putStrLn "d: "
+  d <- readLn
+  putStrLn $ result n d
+  calc
+```
+
+Ex 3.3: Assertions
+
+``` haskell literate
+{-@ lAssert :: {v:Bool | v} -> a -> a @-}
+lAssert :: Bool -> a -> a
+lAssert True x  = x
+lAssert False _ = die "assertion failed!"
+```
+
+``` haskell literate
+yes = lAssert (1 + 1 == 2) ()
+```
+
+``` haskell
+no  = lAssert (1 + 1 == 3) ()
 ```
 
 The next section is about data types.
@@ -224,7 +342,7 @@ module A2 where
 ```
 
 ``` haskell literate
-import A1
+import A1 (impossible)
 import Prelude hiding (length, foldr1, foldr, map, init)
 ```
 
@@ -380,6 +498,7 @@ Case study: **Insertion Sort**.
 
 ``` haskell literate
 {-# LANGUAGE ScopedTypeVariables #-}
+{-@ LIQUID "--no-termination" @-}
 ```
 
 ``` haskell literate
@@ -387,7 +506,8 @@ module A3 where
 ```
 
 ``` haskell literate
-import A2
+import A1 (impossible)
+import A2 (List(..), length)
 import Data.Set (Set)
 import qualified Data.Set as Set
 ```
@@ -422,17 +542,14 @@ insert x (y ::: ys)
 Now, lets ensure that a sorted list have the same elements. SMT solvers
 reason about sets. Hence, we can write set-valued measures.
 
-Fails with `Termination Error`, `no decreasing parameter`. Asked in
-Slack, will come back to this later.
-
-``` haskell
+``` haskell literate
 {-@ measure elems @-}
 elems :: Ord a => List a -> Set a
 elems Emp = Set.empty
 elems (x ::: xs) = addElem x xs
 ```
 
-``` haskell
+``` haskell literate
 {-@ inline addElem @-}
 addElem :: Ord a => a -> List a -> Set a
 addElem x xs = Set.union (Set.singleton x) (elems xs)
@@ -750,8 +867,750 @@ fx2VC xs ys =   (0 <= size xs)
             ==> (0 < size ys)
 ```
 
-Whatever.
+Polymorphism.
+
+``` haskell literate
+{-@ LIQUID "--short-names" @-}
+{-@ LIQUID "--no-termination"      @-}
+{-@ LIQUID "--scrape-used-imports" @-}
+```
 
 ``` haskell literate
 module B2 where
 ```
+
+``` haskell literate
+import A1 (abs)
+import Prelude hiding (length, abs)
+import Data.Vector hiding (head, foldl')
+import Data.List (foldl')
+```
+
+Array bounds verification:
+
+``` haskell literate
+twoLangs :: Vector String
+twoLangs = fromList ["haskell", "javascript"]
+```
+
+We get a runtime exception with this:
+
+``` haskell
+eeks :: [String]
+eeks = [ok, yup, nono]
+  where
+    ok   = twoLangs ! 0
+    yup  = twoLangs ! 1
+    nono = twoLangs ! 3
+```
+
+We can write specifications for imported modules – either *in place* or
+(better), in `.spec` files, which could be reused across multiple
+modules.
+
+We can write specifications for external modules inside special
+`include` directories.
+
+For example, for `Data.Vector` we’ll need `include/Data/Vector.spec`
+with the following contents:
+
+``` haskell
+-- | Define the size
+measure vlen :: Vector a -> Int
+```
+
+``` haskell
+-- | Compute the size
+assume length :: x:Vector a -> {v:Int | v = vlen x}
+```
+
+``` haskell
+-- | Lookup at an index
+assume (!) :: x:Vector a -> {v:Nat | v < vlen x} -> a
+```
+
+To use this specification:
+
+``` haskell
+liquid -i include/ foo.hs
+```
+
+LiquidHaskell ships with specifications for `Prelude`, `Data.List` nad
+`Data.Vector` which it includes by default.
+
+**Measures** - define *properties* of Haskell data values that are used
+for specification and verification.
+
+**Assumes** - *specify* types describing semantics of functions that we
+cannot verify because we don’t have the code for them.
+
+**Alises** - *abbreviations* for commonly occurring types, e.g.:
+
+``` haskell literate
+{-@ type VectorN a N = {v:Vector a | vlen v == N} @-}
+```
+
+``` haskell literate
+{-@ twoLangs :: VectorN String 2 @-}
+```
+
+or
+
+``` haskell literate
+{-@ type Btwn Lo Hi = {v:Int | Lo <= v && v < Hi} @-}
+```
+
+then we can
+
+``` haskell
+(!) :: x:Vector a -> Btwn 0 (vlen x) -> a
+```
+
+Lets try something.
+
+What if `vec` had *no* elements? A formal verifier doesn’t make *off by
+one* errors:
+
+``` haskell
+head :: Vector a -> a
+head vec = vec ! 0
+```
+
+Lets fix that:
+
+``` haskell literate
+{-@ type NEVector a = {v:Vector a | 0 < vlen v} @-}
+```
+
+We’ve specified `NEVector` is a *non-empty* vector, so now our new
+`head'` verifies:
+
+``` haskell literate
+{-@ head' :: NEVector a -> a @-}
+head' :: Vector a -> a
+head' vec = vec ! 0
+```
+
+Ex 4.1 (Vector head)
+
+``` haskell literate
+head'' :: Vector a -> Maybe a
+head'' vec = vec !? 0
+```
+
+Ex 4.2 (Unsafe lookup)
+
+``` haskell literate
+{-@ type GTVector a N = {v:Vector a | N < vlen v} @-}
+```
+
+``` haskell literate
+{-@ unsafeLookup :: ix:Nat -> GTVector a ix -> a @-}
+unsafeLookup :: Int -> Vector a -> a
+unsafeLookup ix vec = vec ! ix
+```
+
+Ex 4.3 (Safe lookup)
+
+``` haskell literate
+{-@ safeLookup :: Vector a -> Int -> Maybe a @-}
+safeLookup :: Vector a -> Int -> Maybe a
+safeLookup x i
+  | ok = Just (x ! i)
+  | otherwise = Nothing
+  where
+    ok = 0 < i && i < length x
+```
+
+Inference.
+
+LH verifies the `vectorSum` function below (safety of `vec ! i`) because
+LH is able to automatically infer:
+
+``` haskell
+go :: Int -> {v:Int | 0 <= v && v <= sz} -> Int
+```
+
+``` haskell literate
+vectorSum :: Vector Int -> Int
+vectorSum vec = go 0 0
+  where
+    go :: Int -> Int -> Int
+    go acc i
+      | i < sz    = go (acc + (vec ! i)) (i + 1)
+      | otherwise = acc
+    sz = length vec
+```
+
+Ex 4.6 (Why `v <= sz` and not `v < sz`?)
+
+Because when `i < sz` we call `go acc (i + 1)` and `i + 1 <= sz` in this
+case.
+
+Ex 4.5 (Absolute sum)
+
+``` haskell literate
+{-@ absoluteSum :: Vector Int -> Nat @-}
+absoluteSum :: Vector Int -> Int
+absoluteSum vec = go 0 0
+  where
+    go acc i
+      | i < length vec = go (acc + abs (vec ! i)) (i + 1)
+      | otherwise      = acc
+```
+
+High-order functions.
+
+``` haskell literate
+{-@ loop :: lo:Nat -> hi:{Nat | lo <= hi} -> a -> (Btwn lo hi -> a -> a) -> a @-}
+loop :: Int -> Int -> a -> (Int -> a -> a) -> a
+loop lo hi base f = go base lo
+ where
+   go acc i
+     | i < hi    = go (f i acc) (i + 1)
+     | otherwise = acc
+```
+
+LH finds that:
+
+``` haskell
+loop
+  :: lo:Nat
+  -> hi:{Nat | lo <= hi}
+  -> a
+  -> (Btwn lo hi -> a -> a)
+  -> a
+```
+
+TODO: Have no idea what’s wrong here
+
+``` haskell
+vectorSum' :: Vector Int -> Int
+vectorSum' vec = loop 0 n 0 body
+  where
+    body i acc = acc + (vec ! i)
+    n = length vec
+```
+
+Ex 4.7 (High-order loops)
+
+``` haskell literate
+{-@ absoluteSum' :: Vector Int -> Nat @-}
+absoluteSum' :: Vector Int -> Int
+absoluteSum' vec = loop 0 (length vec) 0 body
+  where
+    {-@ body :: Int -> _ -> Nat @-}
+    body :: Int -> Int -> Int
+    body i acc = acc + abs (vec ! i)
+```
+
+Ex 4.8
+
+``` haskell literate
+{-@
+dotProduct
+  :: x:Vector Int
+  -> {y:Vector Int | vlen x == vlen y}
+  -> Int
+@-}
+dotProduct :: Vector Int -> Vector Int -> Int
+dotProduct x y = loop 0 (length x) 0 body
+  where
+    body :: Int -> Int -> Int
+    body i acc = acc + (x ! i) * (y ! i)
+```
+
+Refinements and Polymorphism.
+
+Lets make an alias for a sparse vectors and write a function to compute
+sparse product.
+
+``` haskell literate
+{-@ type SparseN a N = [(Btwn 0 N, a)] @-}
+```
+
+Since we know that all indexes are with the bounds of the source array
+the following function verifies:
+
+``` haskell literate
+{-@ sparseProduct :: x:Vector _ -> SparseN _ (vlen x) -> _ @-}
+sparseProduct :: Num a => Vector a -> [(Int, a)] -> a
+sparseProduct x y = go 0 y
+  where
+    go acc [] = acc
+    go acc ((i, v):ys) = go (acc + (x ! i) * v) ys
+```
+
+Another way to represend the *sparse product* is using `fold`. For
+example:
+
+``` haskell
+foldl' :: (a -> b -> a) -> a -> [b] -> a
+```
+
+GHC infers that:
+
+``` haskell
+foldl' :: (a -> (Int, a)) -> a -> [(Int, a)] -> a
+```
+
+LH infers that:
+
+``` haskell
+b :: (Btwn 0 (vlen x), a)
+```
+
+``` haskell literate
+{-@ sparseProduct' :: x:Vector _ -> SparseN _ (vlen x) -> _ @-}
+sparseProduct' :: Num a => Vector a -> [(Int, a)] -> a
+sparseProduct' x y = foldl' body 0 y
+  where
+    body sum (i, v) = sum + (x ! i) * v
+```
+
+Refined Datatypes.
+
+``` haskell literate
+{-@ LIQUID "--short-names" @-}
+{-@ LIQUID "--no-termination" @-}
+{-@ LIQUID "--no-total" @-}
+```
+
+``` haskell literate
+module B3 where
+```
+
+``` haskell literate
+import Prelude hiding (abs, length, min)
+import Data.Vector hiding (singleton, foldl', foldr, fromList, (++), all)
+import Data.Maybe (fromJust)
+```
+
+Sparse vectors revisited.
+
+``` haskell literate
+data Sparse a = SP
+  { spDim :: Int
+  , spElems :: [(Int, a)]
+  }
+```
+
+  - `spDim` should be positive number
+  - every index in `spElems` should be `0 <= i < spDim`
+
+<!-- end list -->
+
+``` haskell literate
+{-@
+data Sparse a = SP
+  { spDim :: Nat
+  , spElems :: [(Btwn 0 spDim, a)]
+  }
+@-}
+```
+
+``` haskell literate
+{-@ type Btwn Lo Hi = {v:Int | Lo <= v && v < Hi} @-}
+```
+
+Now `SP` works like a *smart* constructor\!
+
+``` haskell literate
+okSP :: Sparse String
+okSP = SP 5 [ (0, "cat")
+            , (3, "dog")
+            ]
+```
+
+``` haskell
+badSP :: Sparse String
+badSP = SP 5 [ (0, "cat")
+             , (6, "dog")
+             ]
+```
+
+Field measures.
+
+Lets write an alias for sparse vectors of size `N`.
+
+``` haskell literate
+{-@ type SparseN a N = {v:Sparse a | spDim v == N} @-}
+```
+
+Now we can write our `dotProd` function like this:
+
+``` haskell literate
+{-@ dotProd :: x:Vector Int -> SparseN Int (vlen x) -> Int @-}
+dotProd :: Vector Int -> Sparse Int -> Int
+dotProd x (SP _ y) = go 0 y
+  where
+    go acc []          = acc
+    go acc ((i, v):ys) = go (acc + (x ! i) * v) ys
+```
+
+And `fold`-based implementation:
+
+Ex 5.1 (Sanitization)
+
+``` haskell literate
+{-@ fromList :: n:Nat -> [(Btwn 0 n, _)] -> Maybe (SparseN _ n) @-}
+fromList :: Int -> [(Int, a)] -> Maybe (Sparse a)
+fromList dim elems
+  | all (< dim) (fst <$> elems) = Just $ SP dim elems
+  | otherwise = Nothing
+```
+
+``` haskell literate
+{-@ test1 :: SparseN String 3 @-}
+test1 :: Sparse String
+test1 = fromJust $ fromList 3 [(0, "cat"), (2, "mouse")]
+```
+
+Ex 5.2 (Addition)
+
+``` haskell literate
+{-@ plus :: SparseN a 3 -> SparseN a 3 -> SparseN a 3 @-}
+plus :: Sparse a -> Sparse a -> Sparse a
+plus v1 v2 = SP (spDim v1) (spElems v1 ++ spElems v2)
+```
+
+But I think the goal is to make a general function that can work for any
+dimension.
+
+``` haskell literate
+{-@ test2 :: SparseN Int 3 @-}
+test2 :: Sparse Int
+test2 = plus vec1 vec2
+  where
+    vec1 = SP 3 [(0, 12), (2, 9)]
+    vec2 = SP 3 [(0, 8),  (1, 100)]
+```
+
+Ordered lists.
+
+``` haskell literate
+data IncList a
+  = Emp
+  | (:<) { hd :: a, tl :: IncList a }
+```
+
+``` haskell literate
+infixr 9 :<
+```
+
+We can specify that the elements are in order by refining *every*
+element in `tl` to be *greater than* `hd`:
+
+``` haskell literate
+{-@
+data IncList a =
+    Emp
+  | (:<) { hd :: a, tl :: IncList {v:a | hd <= v} }
+@-}
+```
+
+``` haskell literate
+okList :: IncList Int
+okList = 1 :< 2 :< 3 :< Emp
+```
+
+``` haskell
+badList :: IncList Int
+badList = 2 :< 1 :< 3 :< Emp
+```
+
+Insertion sort.
+
+``` haskell literate
+insertSort :: Ord a => [a] -> IncList a
+insertSort []     = Emp
+insertSort (x:xs) = insert x (insertSort xs)
+```
+
+``` haskell literate
+insert :: Ord a => a -> IncList a -> IncList a
+insert y Emp = y :< Emp
+insert y (x :< xs)
+  | y <= x = y :< x :< xs
+  | otherwise = x :< insert y xs
+```
+
+Ex 5.3
+
+``` haskell literate
+insertSort' :: Ord a => [a] -> IncList a
+insertSort' = foldr insert Emp
+```
+
+Merge sort.
+
+``` haskell literate
+split :: [a] -> ([a], [a])
+split (x:y:zs) =
+  let (xs, ys) = split zs
+  in (x:xs, y:ys)
+split xs = (xs, [])
+```
+
+Sometimes I get errors like http://ix.io/1N99 which really confuse me.
+
+This is a “totality” error — it means your function/case expression is
+missing a case and so LH cannot prove that case is dead code and hence
+gives that error (e.g. the head or tail function which is not defined on
+\[\]). This feature was added after the tutorial and the LH authors made
+totality on by default. It can be switched off with `{-@ LIQUID
+“—no-total” @-}`. Or of course it is better to implement the missing
+case.
+
+We should however add to the error the missing patterns…
+
+One way to get them right now is load the file in ghci with the
+`-fwarn-incomplete-patterns` flag.
+
+``` haskell literate
+merge :: Ord a => IncList a -> IncList a -> IncList a
+merge Emp ys = ys
+merge xs Emp = xs
+merge (x :< xs) (y :< ys)
+  | x <= y    = x :< merge xs (y :< ys)
+  | otherwise = y :< merge (x :< xs) ys
+```
+
+``` haskell literate
+mergeSort :: Ord a => [a] -> IncList a
+mergeSort []  = Emp
+mergeSort [x] = x :< Emp
+mergeSort xs  = merge (mergeSort ys) (mergeSort zs)
+  where
+    (ys, zs) = split xs
+```
+
+Ex 5.4 (QuickSort)
+
+``` haskell literate
+quickSort :: Ord a => [a] -> IncList a
+quickSort [] = Emp
+quickSort (x:xs) = append x lessers greaters
+  where
+    lessers  = quickSort [y | y <- xs, y < x]
+    greaters = quickSort [z | z <- xs, z >= x]
+```
+
+We need to ensure that `append` has a valid specification:
+
+``` haskell literate
+{-@
+append
+  :: x:a
+  -> IncList {v:a | v < x}
+  -> IncList {v:a | v >= x}
+  -> IncList a
+@-}
+append :: Ord a => a -> IncList a -> IncList a -> IncList a
+append z Emp ys       = z :< ys
+append z (x :< xs) ys = x :< (append z xs ys)
+```
+
+Ordered trees.
+
+``` haskell literate
+data BST a
+  = Leaf
+  | Node { root  :: a
+         , left  :: BST a
+         , right :: BST a
+         }
+```
+
+``` haskell literate
+okBST :: BST Int
+okBST =
+  Node 6
+    ( Node 2
+      (Node 1 Leaf Leaf)
+      (Node 4 Leaf Leaf)
+    )
+    ( Node 9
+      (Node 7 Leaf Leaf)
+      Leaf
+    )
+```
+
+``` haskell literate
+okBST' :: BST Int
+okBST' =
+  Node 5
+    ( Node 3
+      (Node 1 Leaf Leaf)
+      (Node 4 Leaf Leaf)
+    )
+    ( Node 8
+      (Node 7 Leaf Leaf)
+      Leaf
+    )
+```
+
+``` haskell literate
+{-@
+data BST a =
+    Leaf
+  | Node { root  :: a
+         , left  :: BSTL a root
+         , right :: BSTR a root
+         }
+@-}
+```
+
+``` haskell literate
+{-@ type BSTL a X = BST {v:a | v < X} @-}
+{-@ type BSTR a X = BST {v:a | v > X} @-}
+```
+
+``` haskell
+badBST :: BST Int
+badBST =
+  Node 66
+    ( Node 4
+      (Node 1 Leaf Leaf)
+      (Node 69 Leaf Leaf)
+    )
+    ( Node 99
+      (Node 77 Leaf Leaf)
+      Leaf
+    )
+```
+
+Ex 5.5 (Duplicates)
+
+The answer is no. Each value is either `>` than other or `<`. But `N >
+N` is impossible and `N < N` doesn’t make any sense too.
+
+Membership.
+
+``` haskell literate
+mem :: Ord a => a -> BST a -> Bool
+mem _ Leaf = False
+mem k (Node k' l r)
+  | k == k'   = True
+  | k <  k'   = mem k l
+  | otherwise = mem k r
+```
+
+Singleton.
+
+``` haskell literate
+one :: a -> BST a
+one x = Node x Leaf Leaf
+```
+
+Insertion.
+
+``` haskell literate
+add :: Ord a => a -> BST a -> BST a
+add k' Leaf = one k'
+add k' t@(Node k l r)
+  | k' < k    = Node k (add k' l) r
+  | k  < k'   = Node k l (add k' r)
+  | otherwise = t
+```
+
+Minimum.
+
+``` haskell literate
+data MinPair a = MP
+  { mEl :: a
+  , mRest :: BST a
+  }
+```
+
+``` haskell literate
+{-@
+data MinPair a = MP
+  { mEl :: a
+  , mRest :: BSTR a mEl
+  }
+@-}
+```
+
+Looks like the `delMin` example from page 55 needs an additional
+restriction (that `BST a` isn’t just a `Leaf`) + maybe something else.
+
+As I can see right now, nothing prevents `BST a` from being a `Leaf` So
+`delMin Leaf = die "impossible"` branch is possible and verification
+fails for me with error http://ix.io/1O9r.
+
+``` haskell
+{-@ delMin :: BST a -> MinPair a @-}
+delMin :: Ord a => BST a -> MinPair a
+delMin (Node k Leaf r) = MP k r
+delMin (Node k l r) =
+  let MP k' l' = delMin l
+  in MP k' (Node k l' r)
+delMin Leaf = die "impossible"
+```
+
+Ex 5.6 (Delete)
+
+Depends on `delMin`.
+
+Ex 5.7. (Safely deleting minimum)
+
+Depends on `delMin`.
+
+Ex 5.8 (BST sort).
+
+TODO\!
+
+Lifting functions to Measures.
+
+``` haskell literate
+module B4 where
+import A1 (safeDiv)
+```
+
+``` haskell literate
+notEmpty :: [a] -> Bool
+notEmpty []    = False
+notEmpty (_:_) = True
+```
+
+Measure is a *total* Haskell function:
+
+  - single equative per data constructor
+  - guaranteed to *terminate*
+
+**measure** tells LiquidHaskell to *lift* a function into the refinement
+logic:
+
+``` haskell literate
+{-@ measure notEmpty @-}
+```
+
+Now we can use the `notEmpty` predicate to describe non-empty lists:
+
+``` haskell literate
+{-@ type NEList a = { v:[a] | notEmpty v } @-}
+```
+
+`size` returns a non-zero value *if* the input list is not-empty. We
+capture this condition with an implication in the output refinement.
+
+``` haskell literate
+{-@ size :: xs:[a] -> { v:Nat | notEmpty xs => v > 0 } @-}
+size :: [a] -> Int
+size []     = 0
+size (_:xs) = 1 + size xs
+```
+
+``` haskell literate
+{-@ average :: NEList Int -> Int @-}
+average :: [Int] -> Int
+average xs = total `safeDiv` elems
+  where
+    total = sum xs
+    elems = size xs
+```
+
+Ex 6.1 (Average, Maybe)
+
+Ex 6.2 (Debugging specificatins)

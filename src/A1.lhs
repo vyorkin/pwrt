@@ -2,6 +2,9 @@
 
 Refinement Types = `Types` + `Predicates`.
 
+**Refinement types** allows us to decorate types with _logical predicates_,
+that contrain the set of values described by the type.
+
 > module A1 where
 
 > {-@ LIQUID "--no-termination" @-}
@@ -36,14 +39,19 @@ Ok, lets try something!
 
 We use `{-@ ... @-}` to add refinement type annotations:
 
-< {-@ type Zero = {v:Int | v = 0} @-}
-< {-@ zero :: Zero @-}
-< zero :: Int
-< zero = 0
+> {-@ type Zero = {v:Int | v = 0} @-}
+> {-@ zero :: Zero @-}
+> zero :: Int
+> zero = 0
+
+Predicate Subtyping:
+
+> {-@ type Nat   = {v:Int | 0 <= v}        @-}
+> {-@ type Even  = {v:Int | v mod 2 == 0 } @-}
+> {-@ type Lt100 = {v:Int | v < 100}       @-}
 
 Natural numbers:
 
-> {-@ type Nat = {v:Int | 0 <= v} @-}
 > {-@ nats :: [Nat] @-}
 > nats :: [Int]
 > nats = [0, 1, 2]
@@ -56,26 +64,64 @@ Positive integers:
 > pos :: [Int]
 > pos = [1, 2, 3]
 
-Predicate Subtyping:
+Zero:
 
-< {-@ z :: Zero @-}
-< z :: Int
-< z = 0
+> {-@ z :: Zero @-}
+> z :: Int
+> z = 0
 
 Because `z :: Zero <: Nat`:
 
-< {-@ z' :: Nat @-}
-< z' :: Int
-< z' = z
+> {-@ z' :: Nat @-}
+> z' :: Int
+> z' = z
+
+Also:
+
+> {-@ z'' :: Even @-}
+> z'' :: Int
+> z'' = z
+
+And this one as well:
+
+> {-@ z''' :: Lt100 @-}
+> z''' :: Int
+> z''' = z
+
+When we _erase_ the _refinement_ we get the standart Haskell types.
+For example, the `Int` is equivalent to `{v:Int | true}` because
+any standart Haskell type has the trivial refinement  `true`.
+
+Writing specifications and _typing dead code_.
 
 Contracts (function types):
 
 If the program type checks it means
 that `impossible` is never called at runtime.
 
-> {-@ impossible :: {v:_ | false} -> a @-}
-> impossible :: [Char] -> a
+> {-@ impossible :: {v:String | false} -> a @-}
+> impossible :: String -> a
 > impossible msg = error msg
+
+> {-@ die :: {v:String | false} -> a @-}
+> die :: String -> a
+> die msg = impossible msg
+
+For example, LH will _accept_:
+
+> cannonDie :: ()
+> cannonDie =
+>   if 1 + 1 == 3
+>   then die "horrible death"
+>   else ()
+
+But will _reject_:
+
+< canDie :: ()
+< canDie =
+<   if 1 + 1 == 2
+<   then die "horrible death"
+<   else ()
 
 Pre-conditions:
 
@@ -106,20 +152,22 @@ Verifying user input:
 >     else putStrLn ("Result = " ++ show (safeDiv n d))
 >   calc
 
-Another way could be:
+Post-conditons.
 
-> {-@ foo :: Int -> Maybe {v:Int | v /= 0} @-}
-> foo :: Int -> Maybe Int
-> foo 0 = Nothing
-> foo n = Just n
+We can specify a _post-condition_ as _output-type_.
 
-< ...
-< case foo d of
-< Nothing -> putStrLn "Blya"
-< Just n  -> ...
-< ...
+For example, lets refine the output type of the `abs` function
+to say that it returns only non-negative values:
 
-Won't typecheck (`n` could be `0`)
+> {-@ abs :: Int -> Nat @-}
+> abs :: Int -> Int
+> abs n
+>   | 0 < n = n
+>   | otherwise = -n
+
+Because SMT solver has built-in decision procedures for arithmetic.
+
+Ex 3.1:
 
 > avg :: [Int] -> Int
 > avg xs = safeDiv total n
@@ -127,9 +175,54 @@ Won't typecheck (`n` could be `0`)
 >     total = sum xs
 >     n = size xs
 
-We could specify **post-condition** as **output-type**:
-
 > {-@ size :: [a] -> Pos @-}
 > size :: [a] -> Int
 > size []     = 1
 > size (_:xs) = 1 + size xs
+
+Another way to solve the `calc` exercise is
+to define a function like:
+
+> {-@ nonZero :: Int -> Maybe {v:Int | v /= 0} @-}
+> nonZero :: Int -> Maybe Int
+> nonZero 0 = Nothing
+> nonZero n = Just n
+
+< ...
+< case nonZero d of
+<   Nothing -> putStrLn "Blya"
+<   Just n  -> ...
+< ...
+
+Or
+
+> result :: Int -> Int -> String
+> result n d
+>   | isPositive d = "result = " ++ show (n `safeDiv` d)
+>   | otherwise    = "blya"
+
+Ex 3.2:
+
+> {-@ isPositive :: x:_ -> {v:Bool | v <=> x > 0} @-}
+> isPositive :: (Ord a, Num a) => a -> Bool
+> isPositive = (> 0)
+
+> calc' :: IO ()
+> calc' = do
+>   putStrLn "n: "
+>   n <- readLn
+>   putStrLn "d: "
+>   d <- readLn
+>   putStrLn $ result n d
+>   calc
+
+Ex 3.3: Assertions
+
+> {-@ lAssert :: {v:Bool | v} -> a -> a @-}
+> lAssert :: Bool -> a -> a
+> lAssert True x  = x
+> lAssert False _ = die "assertion failed!"
+
+> yes = lAssert (1 + 1 == 2) ()
+
+< no  = lAssert (1 + 1 == 3) ()

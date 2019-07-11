@@ -5,7 +5,7 @@ The next section is about data types.
 
 > module A2 where
 
-> import A1
+> import A1 (impossible)
 > import Prelude hiding (length, foldr1, foldr, map, init)
 
 > data List a

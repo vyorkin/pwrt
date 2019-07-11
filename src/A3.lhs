@@ -2,10 +2,12 @@
 Case study: **Insertion Sort**.
 
 > {-# LANGUAGE ScopedTypeVariables #-}
+> {-@ LIQUID "--no-termination" @-}
 
 > module A3 where
 
-> import A2
+> import A1 (impossible)
+> import A2 (List(..), length)
 > import Data.Set (Set)
 > import qualified Data.Set as Set
 
@@ -33,16 +35,13 @@ Lets start with the _same size_ constraint:
 Now, lets ensure that a sorted list have the same elements.
 SMT solvers reason about sets. Hence, we can write set-valued measures.
 
-Fails with `Termination Error`, `no decreasing parameter`.
-Asked in Slack, will come back to this later.
+> {-@ measure elems @-}
+> elems :: Ord a => List a -> Set a
+> elems Emp = Set.empty
+> elems (x ::: xs) = addElem x xs
 
-< {-@ measure elems @-}
-< elems :: Ord a => List a -> Set a
-< elems Emp = Set.empty
-< elems (x ::: xs) = addElem x xs
-
-< {-@ inline addElem @-}
-< addElem :: Ord a => a -> List a -> Set a
-< addElem x xs = Set.union (Set.singleton x) (elems xs)
+> {-@ inline addElem @-}
+> addElem :: Ord a => a -> List a -> Set a
+> addElem x xs = Set.union (Set.singleton x) (elems xs)
 
 `inline` lets us reuse Haskell terms in refinements.

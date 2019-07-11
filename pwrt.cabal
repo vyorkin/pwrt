@@ -27,14 +27,18 @@ library
                      -Wcompat
                      -Widentities
                      -Wredundant-constraints
+                     -fwarn-incomplete-patterns
                      -fhide-source-paths
                      -Wpartial-fields
   build-depends:     base ^>= 4.12.0.0
                    , liquidhaskell-cabal ^>= 0.2.1
                    , containers ^>= 0.6
+                   , vector ^>= 0.12
   x-liquidhaskell-options: --no-termination
   exposed-modules:   A1
                    , A2
                    , A3
                    , B1
                    , B2
+                   , B3
+                   , B4
