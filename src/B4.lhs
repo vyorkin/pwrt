@@ -11,7 +11,7 @@ Lifting functions to Measures.
 
 Measure is a _total_ Haskell function:
 
-* single equative per data constructor
+* single equation per data constructor
 * guaranteed to _terminate_
 
 **measure** tells LiquidHaskell to _lift_ a
