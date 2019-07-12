@@ -140,5 +140,23 @@ Unsafe zip:
 > zip [] _ = []
 > zip _ [] = []
 
-> {-@ predicate Tinier X Y Z = Min (size X) (size Y) (size Z) @-}
-> {-@ predicate Min X Y Z = (if Y < Z then X = Y else X = Z) @-}
+> {-@ predicate Tinier V X Y = Min (size V) (size X) (size Y) @-}
+> {-@ predicate Min V X Y = (if X < Y then V == X else V == Y) @-}
+
+Ex 7.3 (Zip unless empty)
+
+TODO: How to draw an owl
+
+< {-@
+< zipOrNull
+<   :: xs:List a
+<   -> ys:List b
+<    -> ListX (a, b) xs @-}
+< zipOrNull :: [a] -> [b] -> [(a, b)]
+< zipOrNull [] _  = []
+< zipOrNull _ []  = []
+< zipOrNull xs ys = zipWith (,) xs ys
+
+< {-@ test1 :: { v:_ | size v = 2 } @-}
+< test1 :: [(Int, Bool)]
+< test1 = zipOrNull [0, 1] [True, False]
