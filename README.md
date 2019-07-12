@@ -1564,8 +1564,15 @@ TODO\!
 Lifting functions to Measures.
 
 ``` haskell literate
+{-@ LIQUID "--no-termination" @-}
+{-@ LIQUID "--short-names"    @-}
+```
+
+``` haskell literate
 module B4 where
-import A1 (safeDiv)
+import Prelude hiding (head, tail, null, sum, foldl1)
+import qualified Prelude as P
+import A1 (safeDiv, die)
 ```
 
 ``` haskell literate
@@ -1576,7 +1583,7 @@ notEmpty (_:_) = True
 
 Measure is a *total* Haskell function:
 
-  - single equative per data constructor
+  - single equation per data constructor
   - guaranteed to *terminate*
 
 **measure** tells LiquidHaskell to *lift* a function into the refinement
@@ -1607,10 +1614,178 @@ size (_:xs) = 1 + size xs
 average :: [Int] -> Int
 average xs = total `safeDiv` elems
   where
-    total = sum xs
+    total = P.sum xs
     elems = size xs
 ```
 
 Ex 6.1 (Average, Maybe)
 
+``` haskell literate
+average' :: [Int] -> Maybe Int
+average' xs
+  | elems > 0 = Just $ (P.sum xs) `safeDiv` elems
+  | otherwise = Nothing
+  where
+    elems = size xs
+```
+
 Ex 6.2 (Debugging specificatins)
+
+These two examples below are rejected because the `xs` in `(_:xs)` could
+be empty:
+
+``` haskell
+{-@ size1 :: xs:NEList a -> Pos @-}
+size1 :: [a] -> Int
+size1 [] = 0
+size1 (_:xs) = 1 + size1 xs
+```
+
+``` haskell
+{-@ size2 :: xs:[a] -> { v:Int | notEmpty xs => v > 0 } @-}
+size2 :: [a] -> Int
+size2 [] = 0
+size2 (_:xs) = 1 + size2 xs
+```
+
+Since we have `NEList` we can use it to type the `head` and `tail`
+functions:
+
+``` haskell literate
+{-@ head :: NEList a -> a @-}
+head :: [a] -> a
+head (x:_) = x
+head []    = die "fear not"
+```
+
+``` haskell literate
+{-@ tail :: NEList a -> [a] @-}
+tail :: [a] -> [a]
+tail (_:xs) = xs
+tail []    = die "fear not"
+```
+
+LH uses the precondition to deduce that the second equations are *dead
+code*.
+
+Ex 6.3 (Safe head)
+
+``` haskell literate
+safeHead :: [a] -> Maybe a
+safeHead xs
+  | null xs   = Nothing
+  | otherwise = Just $ head xs
+```
+
+``` haskell literate
+{-@ null :: xs:[a] -> {v:Bool | v <=> not notEmpty xs } @-}
+null :: [a] -> Bool
+null []    = True
+null (_:_) = False
+```
+
+Groups.
+
+Lets write a function that chunks sequences into non-empty groups of
+equal elements:
+
+``` haskell literate
+{-@ groupEq :: Eq a => [a] -> [NEList a] @-}
+groupEq :: Ord a => [a] -> [[a]]
+groupEq []     = []
+groupEq (x:xs) = (x:ys) : groupEq zs
+  where
+    (ys, zs) = span (x ==) xs
+```
+
+Eliminate stuttering:
+
+``` haskell literate
+eliminateStutter :: String -> String
+eliminateStutter = map head . groupEq
+```
+
+``` haskell
+λ> eliminateStutter "ssstringssss liiiiiike thisss"
+"strings like this"
+```
+
+``` haskell literate
+{-@ foldl1 :: (a -> a -> a) -> NEList a -> a @-}
+foldl1 :: (a -> a -> a) -> [a] -> a
+foldl1 f (x:xs) = foldl f x xs
+foldl1 _ [] = die "foldl1"
+```
+
+Sum of a non-empty list of `Num a`:
+
+``` haskell literate
+{-@ sum :: Num a => NEList a -> a @-}
+sum :: Num a => [a] -> a
+sum [] = die "sum"
+sum xs = foldl1 (+) xs
+```
+
+``` haskell literate
+sumOk :: Int
+sumOk = sum [1, 2, 3]
+```
+
+``` haskell
+sumBad :: Int
+sumBad = sum []
+```
+
+``` haskell
+sumBad' :: Int
+sumBad' = sum [1..3]
+```
+
+Ex 6.4 (Weighted average)
+
+``` haskell literate
+{-@ wtAverage :: NEList (Pos, Pos) -> Int @-}
+wtAverage :: [(Int, Int)] -> Int
+wtAverage wxs = totElems `safeDiv` totWeight
+  where
+    elems     = map' (uncurry (*)) wxs
+    weights   = map' fst wxs
+    totElems  = sum' elems
+    totWeight = sum' weights
+```
+
+``` haskell literate
+{-@ sum' :: NEList Pos -> Pos @-}
+sum' :: [Int] -> Int
+sum' [] = die "sum"
+sum' xs = foldl1 (+) xs
+```
+
+``` haskell literate
+{-@ map' :: (a -> b) -> NEList a -> NEList b @-}
+map' :: (a -> b) -> [a] -> [b]
+map' _ []     = die "impossible"
+map' f (x:[]) = [f x]
+map' f (x:xs) = (f x) : map' f xs
+```
+
+Ex 6.5 (Mitchell’s risers)
+
+``` haskell literate
+{-@ risers :: Ord a => NEList a -> NEList [a] @-}
+risers :: (Ord a) => [a] -> [[a]]
+risers []  = die "impossible"
+risers [x] = [[x]]
+risers (x:y:etc)
+  | x <= y    = (x:s):ss
+  | otherwise = [x]:(s:ss)
+  where
+    (s, ss) = safeSplit $ risers (y:etc)
+```
+
+``` haskell literate
+{-@ safeSplit :: NEList a -> (a, [a]) @-}
+safeSplit :: [a] -> (a, [a])
+safeSplit (x:xs) = (x, xs)
+safeSplit _ = die "go forth and die"
+```
