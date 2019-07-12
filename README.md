@@ -1795,13 +1795,25 @@ Numeric measures.
 Wholemeal programming.
 
 ``` haskell literate
+{-# LANGUAGE ScopedTypeVariables #-}
 {-@ LIQUID "--no-termination" @-}
 {-@ LIQUID "--short-names"    @-}
 ```
 
 ``` haskell literate
 module B5 where
-import Prelude
+```
+
+``` haskell literate
+import Prelude hiding (map, reverse, zipWith, zip)
+import qualified Prelude as P
+import A1 (die)
+```
+
+We’ll need some stuff from the previous chapters:
+
+``` haskell literate
+{-@ type TRUE = {v:Bool | v} @-}
 ```
 
 We can use **measures** to specify dimensions and create a
@@ -1829,7 +1841,7 @@ data Matrix a = M
 dotProd :: Num a => Vector a -> Vector a -> a
 dotProd vx vy = sum (prod xs ys)
   where
-    prod = zipWith (*)
+    prod = P.zipWith (*)
     xs   = vEls vx
     ys   = vEls vy
 ```
@@ -1892,3 +1904,73 @@ data [a] where
 
 **Measure**’s decouples *property* from *structure*, which enabled the
 use of the same structure for many different purposes.
+
+To make signatures symmetric:
+
+``` haskell literate
+type List a = [a]
+```
+
+``` haskell literate
+{-@ type ListN a N = { v:List a | size v == N } @-}
+{-@ type ListX a X = ListN a { size X } @-}
+```
+
+Ex 7.1 (Map)
+
+``` haskell literate
+{-@ map :: (a -> b) -> xs:List a -> ListX b xs @-}
+map :: (a -> b) -> List a -> List b
+map f (x:xs) = f x : map f xs
+map _ [] = []
+```
+
+``` haskell literate
+{-@ prop_map :: forall a. xs:List a -> TRUE @-}
+prop_map :: forall a. List a -> Bool
+prop_map xs = size ys == size xs
+  where
+    {-@ ys :: ListX a xs @-}
+    ys :: List a
+    ys = map id xs
+```
+
+Ex 7.2 (Reverse)
+
+``` haskell literate
+{-@ reverse :: xs:List a -> ListX a xs @-}
+reverse :: List a -> List a
+reverse = go []
+  where
+    {-@ go :: ys:List a -> xs:List a -> ListN a {size xs + size ys} @-}
+    go :: List a -> List a -> List a
+    go acc []     = acc
+    go acc (x:xs) = go (x:acc) xs
+```
+
+``` haskell literate
+{-@ invariant {v:[a] | 0 <= size v} @-}
+```
+
+``` haskell literate
+{-@ zipWith :: (a -> b -> c) -> xs:List a -> ListX b xs -> ListX c xs @-}
+zipWith :: (a -> b -> c) -> List a -> List b -> List c
+zipWith f (a:as) (b:bs) = f a b : zipWith f as bs
+zipWith _ [] []         = []
+zipWith _ _ _           = die "impossible"
+```
+
+Unsafe zip:
+
+``` haskell literate
+{-@ zip :: as:[a] -> bs:[b] -> { v:[(a, b)] | Tinier v as bs } @-}
+zip :: [a] -> [b] -> [(a, b)]
+zip (a:as) (b:bs) = (a, b) : zip as bs
+zip [] _ = []
+zip _ [] = []
+```
+
+``` haskell literate
+{-@ predicate Tinier X Y Z = Min (size X) (size Y) (size Z) @-}
+{-@ predicate Min X Y Z = (if Y < Z then X = Y else X = Z) @-}
+```
